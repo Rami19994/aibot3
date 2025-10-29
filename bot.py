@@ -2,6 +2,7 @@ import asyncio
 import nest_asyncio
 import requests
 import time
+import os
 import threading
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -172,8 +173,8 @@ def start_auto_checker(app):
 
 # ========== تشغيل البوت ==========
 def main():
-   import os
-    import asyncio
+   
+    
 
     if os.name == "nt":  # يعمل فقط على Windows
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -190,4 +191,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
