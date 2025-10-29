@@ -19,8 +19,8 @@ db = Database("db.db")
 TOKEN = "8344417182:AAHDfjagQdiKF8mu5ARgU15w9Ic5UWYOQhw"
 
 # 🧠 مفاتيح OpenRouter
-OPENROUTER_KEY = "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"
-PRIMARY_MODEL = "openai/gpt-oss-20b:free"
+OPENROUTER_KEY = "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"
+PRIMARY_MODEL = "deepseek/deepseek-chat-v3.1:free"
 BACKUP_MODEL = "mistralai/mistral-7b-instruct:free"
 
 # محفظة USDT
@@ -191,5 +191,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
