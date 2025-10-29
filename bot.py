@@ -29,7 +29,7 @@ BOT_USERNAME = "sadekee_bot"
 
 # ========== دالة الذكاء الصناعي ==========
 async def chat_with_ai(prompt: str) -> str:
-    url = "https://openrouter.ai/api/v1"
+    url = "https://openrouter.ai/api/v1/chat/completions"
     def send_request(model_name):
         headers = {
             "Authorization": f"Bearer {OPENROUTER_KEY}",
@@ -191,6 +191,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
