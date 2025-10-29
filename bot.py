@@ -2,7 +2,6 @@ import asyncio
 import nest_asyncio
 import requests
 import time
-import os
 import threading
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -16,22 +15,20 @@ nest_asyncio.apply()
 
 # ========== الإعداد ==========
 db = Database("db.db")
+TOKEN = "8344417182:AAHDfjagQdiKF8mu5ARgU15w9Ic5UWYOQhw"
 
-# 🧠 مفاتيح من البيئة (حتى تعمل على Railway)
-TOKEN = os.environ.get("TOKEN")
-OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY")
-WALLET_ADDRESS = os.environ.get("WALLET_ADDRESS")
-BOT_USERNAME = os.environ.get("BOT_USERNAME")
-
-PRIMARY_MODEL = "deepseek/deepseek-chat-v3.1:free"
+# 🧠 مفاتيح OpenRouter
+OPENROUTER_KEY = "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"
+PRIMARY_MODEL = "google/gemma-3-27b-it:free"
 BACKUP_MODEL = "mistralai/mistral-7b-instruct:free"
 
+# محفظة USDT
+WALLET_ADDRESS = "TD7BeQyvkanpJS9R5LevtyC5F2zr7WE4Fh"
+BOT_USERNAME = "sadekee_bot"
 
 # ========== دالة الذكاء الصناعي ==========
 async def chat_with_ai(prompt: str) -> str:
-    import json
     url = "https://openrouter.ai/api/v1/chat/completions"
-
     def send_request(model_name):
         headers = {
             "Authorization": f"Bearer {OPENROUTER_KEY}",
@@ -47,37 +44,26 @@ async def chat_with_ai(prompt: str) -> str:
             ]
         }
         return requests.post(url, headers=headers, json=payload, timeout=40)
-
     try:
         response = send_request(PRIMARY_MODEL)
         data = response.json()
-
-        # طباعة الرد في السجلات للمراقبة
-        print("🔍 OpenRouter response:", json.dumps(data, indent=2, ensure_ascii=False))
-
-        # في حال وجود خطأ، جرّب النموذج الاحتياطي
-        if "error" in data:
-            if data["error"].get("code") == 429:
-                response = send_request(BACKUP_MODEL)
-                data = response.json()
-            else:
-                return f"⚠️ خطأ من OpenRouter: {data['error'].get('message', 'مشكلة غير معروفة')}"
-
+        if "error" in data and data["error"].get("code") == 429:
+            response = send_request(BACKUP_MODEL)
+            data = response.json()
         if "choices" in data:
             return data["choices"][0]["message"]["content"].strip()
         else:
-            return "⚠️ لم يتم استلام رد صالح من الذكاء الصناعي."
-
+            return "حدث خطأ أثناء معالجة الرد 😕"
     except Exception as e:
         print("❌ خطأ أثناء الاتصال بـ OpenRouter:", e)
-        return "❌ حدث خطأ أثناء الاتصال بالذكاء الصناعي."
-
+        return "حدث خطأ أثناء الاتصال بالذكاء الصناعي 😔"
 
 # ========== أمر /start ==========
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db.insert_user(user.id, user.username or "unknown", user.first_name or "N/A", user.last_name or "N/A")
 
+    # الأزرار
     buttons = [
         [InlineKeyboardButton("🔗 رابط إحالتي", callback_data="referral")],
         [InlineKeyboardButton("💳 الاشتراك الشهري", callback_data="buy")],
@@ -93,7 +79,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "اختر أحد الخيارات 👇",
         reply_markup=keyboard
     )
-
 
 # ========== الأزرار التفاعلية ==========
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -123,17 +108,19 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
-
 # ========== التعامل مع الرسائل ==========
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     text = update.message.text.strip()
 
+    # 🔍 تحقق من حالة المستخدم
     if db.is_subscription_active(user.id):
+        # الاشتراك نشط → استخدم بدون خصم
         reply = await chat_with_ai(text)
         await update.message.reply_text(reply)
         return
 
+    # المستخدم غير مشترك → تحقق من الرصيد المجاني
     balance = db.get_balance(user.id)
     if balance > 0:
         db.update_balance(user.id, -1)
@@ -143,7 +130,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "⏳ انتهت رسائلك المجانية أو انتهى اشتراكك.\n💳 اشترك الآن لتفعيل الشهر الجديد عبر الزر في /start."
         )
-
 
 # ========== فحص المدفوعات (TronScan) ==========
 def check_payments(app):
@@ -162,7 +148,7 @@ def check_payments(app):
             pending = db.get_pending_payment_by_amount(amount)
             if pending:
                 user_id = pending[0]
-                db.confirm_payment(user_id)
+                db.confirm_payment(user_id)  # ✅ تفعيل الاشتراك الشهري
                 print(f"✅ تم تفعيل اشتراك المستخدم {user_id} لمدة شهر.")
                 asyncio.run_coroutine_threadsafe(
                     app.bot.send_message(
@@ -175,20 +161,21 @@ def check_payments(app):
     except Exception as e:
         print("⚠️ خطأ أثناء التحقق من المدفوعات:", e)
 
-
 # ========== تشغيل المراقبة التلقائية ==========
 def start_auto_checker(app):
     def loop():
         while True:
             check_payments(app)
-            db.auto_deactivate_expired_users(app)
+            db.auto_deactivate_expired_users(app)  # ⏰ تعطيل من انتهى اشتراكه
             time.sleep(60)
     threading.Thread(target=loop, daemon=True).start()
 
-
 # ========== تشغيل البوت ==========
 def main():
-    if os.name == "nt":
+    import os
+    
+
+    if os.name == "nt":  # يعمل فقط على Windows
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     print("🚀 البوت يعمل الآن...")
@@ -200,7 +187,6 @@ def main():
 
     start_auto_checker(app)
     app.run_polling(timeout=100, poll_interval=2.0)
-
 
 if __name__ == "__main__":
     main()
