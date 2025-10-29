@@ -172,7 +172,12 @@ def start_auto_checker(app):
 
 # ========== تشغيل البوت ==========
 def main():
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+   import os
+    import asyncio
+
+    if os.name == "nt":  # يعمل فقط على Windows
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     print("🚀 البوت يعمل الآن...")
 
     app = ApplicationBuilder().token(TOKEN).build()
@@ -185,3 +190,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
