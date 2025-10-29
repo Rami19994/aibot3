@@ -3,6 +3,7 @@ import nest_asyncio
 import requests
 import time
 import os
+import json
 import threading
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -36,14 +37,14 @@ async def chat_with_ai(prompt: str) -> str:
             "Content-Type": "application/json",
             "HTTP-Referer": f"https://t.me/{BOT_USERNAME}",
             "X-Title": "AI Telegram Chatbot"
-        }
-        payload = {
-            "model": model_name,
+        },
+       data=json.dumps( {
+            "model": "deepseek/deepseek-chat-v3.1:free",
             "messages": [
                 {"role": "system", "content": "أنت مساعد ذكي يتحدث العربية، ودود ومفيد."},
                 {"role": "user", "content": prompt},
             ]
-        }
+        })
         return requests.post(url, headers=headers, json=payload, timeout=40)
     try:
         response = send_request(PRIMARY_MODEL)
@@ -191,6 +192,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
