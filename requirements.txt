@@ -2,7 +2,5 @@ python-telegram-bot==20.6
 nest_asyncio
 requests
 nest_asyncio
-asyncio
-time
 threading
 datetime
